@@ -41,7 +41,6 @@ app.use("/", appRoutes);
 
 // Error handling
 app.use((req, res, next) => {
-  console.log(`Request: ${req.method} ${req.url}`); // Log requests
   res.status(404).json({
     message: "Route not found",
   });

@@ -41,6 +41,7 @@ class AuthService {
   }
 
   async refreshToken(refreshToken) {
+    console.log('refreshToken', refreshToken);
     const user = await User.findOne({ refreshToken });
     if (!user) {
       throw new ErrorWithStatus({
