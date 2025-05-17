@@ -10,13 +10,13 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
     secure: isProduction,
     sameSite: 'Strict',
     maxAge: 15 * 60 * 1000,
-    path: '/', 
+    path: '/',
   });
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'Strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000, 
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/',
   });
 };
@@ -86,7 +86,7 @@ class AuthController {
   });
 
   refreshToken = catchAsync(async (req, res) => {
-    const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
+    const refreshToken = req.cookies?.refreshToken || req?.body?.refreshToken;
     if (!refreshToken) {
       return BAD_REQUEST(res, 'Refresh token required');
     }
