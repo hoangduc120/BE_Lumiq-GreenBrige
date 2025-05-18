@@ -15,16 +15,9 @@ class ProductController {
     async getAllProducts(req, res) {
         try {
             const { page, limit, sort, search } = req.query;
-            console.log('Controller received query params:', req.query);
 
             // Service trả về { products, totalProducts, totalPages, currentPage }
             const productsData = await productSevice.getAllProducts(page, limit, sort, search);
-
-            console.log('Controller sending response:', {
-                productCount: productsData.products?.length || 0,
-                totalPages: productsData.totalPages,
-                currentPage: productsData.currentPage
-            });
 
             // Trả về kết quả với cấu trúc đúng
             return OK(res, "Get all products successfully", productsData);
