@@ -10,7 +10,7 @@ const session = require("express-session");
 const app = express();
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Must be before CORS and routes
 
 // CORS configuration
