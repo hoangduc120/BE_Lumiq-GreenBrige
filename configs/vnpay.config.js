@@ -9,4 +9,18 @@ const vnpay = new VNPay({
     enableLog: true,
 });
 
-module.exports = { vnpay };
+// Các loại sản phẩm của VNPay
+const ProductCode = {
+    Topup: 'TOPUP',
+    Billpayment: 'BILLPAYMENT',
+    Fashion: 'FASHION',
+    Other: 'other'
+};
+
+// Ngôn ngữ hiển thị
+const VnpLocale = {
+    VN: 'vn',
+    EN: 'en'
+};
+
+module.exports = { vnpay, ProductCode, VnpLocale };

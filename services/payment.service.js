@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const https = require('https');
 const momoConfig = require('../configs/momo.config');
+const { vnpay, ProductCode, VnpLocale } = require('../configs/vnpay.config');
 
 class PaymentService {
     async createMomoPayment(amount, orderId) {
@@ -168,6 +169,67 @@ class PaymentService {
             });
         } catch (error) {
             throw new Error(`Lỗi khi kiểm tra trạng thái thanh toán MoMo: ${error.message}`);
+        }
+    }
+
+    // Phương thức tạo thanh toán VNPay
+    async createVnPayPayment(orderData, ipAddr, returnUrl) {
+        try {
+            // Tạo mã đơn hàng nếu chưa có
+            if (!orderData.id) {
+                orderData.id = `ORDER_${Date.now()}`;
+            }
+
+            // Tạo URL thanh toán VNPay
+            const paymentUrl = vnpay.buildPaymentUrl({
+                vnp_Amount: orderData.amount * 100, // VNPay yêu cầu số tiền phải * 100 (VND -> xu)
+                vnp_IpAddr: ipAddr,
+                vnp_TxnRef: orderData.id,
+                vnp_OrderInfo: `Thanh toan don hang ${orderData.id}`,
+                vnp_OrderType: ProductCode.Other,
+                vnp_ReturnUrl: returnUrl,
+                vnp_Locale: VnpLocale.VN
+            });
+
+            return {
+                paymentUrl,
+                orderId: orderData.id
+            };
+        } catch (error) {
+            throw new Error(`Lỗi khi tạo thanh toán VNPay: ${error.message}`);
+        }
+    }
+
+    // Phương thức xác thực thanh toán VNPay
+    async verifyVnPayPayment(vnpParams) {
+        try {
+            // Kiểm tra tính hợp lệ của dữ liệu
+            const isValid = vnpay.verifyReturnUrl(vnpParams);
+
+            if (!isValid) {
+                throw new Error('Dữ liệu không hợp lệ hoặc đã bị chỉnh sửa');
+            }
+
+            // Kiểm tra mã trạng thái
+            if (vnpParams.vnp_ResponseCode !== '00') {
+                throw new Error(`Thanh toán không thành công. Mã lỗi: ${vnpParams.vnp_ResponseCode}`);
+            }
+
+            // Lưu thông tin giao dịch vào database
+            // Implement logic lưu DB sau
+
+            return {
+                success: true,
+                orderId: vnpParams.vnp_TxnRef,
+                amount: parseInt(vnpParams.vnp_Amount) / 100, // Chuyển từ xu sang VND
+                bankCode: vnpParams.vnp_BankCode,
+                bankTranNo: vnpParams.vnp_BankTranNo,
+                cardType: vnpParams.vnp_CardType,
+                payDate: vnpParams.vnp_PayDate,
+                transactionNo: vnpParams.vnp_TransactionNo
+            };
+        } catch (error) {
+            throw new Error(`Lỗi khi xác thực thanh toán VNPay: ${error.message}`);
         }
     }
 }
