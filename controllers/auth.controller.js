@@ -35,6 +35,7 @@ const clearAuthCookies = (res) => {
     sameSite: 'Strict',
     path: '/',
   });
+  
 };
 
 class AuthController {
