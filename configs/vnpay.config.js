@@ -1,9 +1,9 @@
 const { VNPay } = require('vnpay');
 
 const vnpay = new VNPay({
-    tmnCode: 'B327N5YI',
-    secureSecret: 'W0TQRIZJFDE9X6C4ZSVBKS7VOFIKFLSL',
-    vnpayHost: ' https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+    tmnCode: process.env.VNPAY_TMN_CODE,
+    secureSecret: process.env.VNPAY_SECURE_SECRET,
+    vnpayHost: process.env.VNPAY_HOST,
     testMode: true,
     hashAlgorithm: 'SHA512',
     enableLog: true,
