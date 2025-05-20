@@ -167,9 +167,6 @@ class PaymentController {
             // Xác thực dữ liệu thanh toán
             const verifyResult = await paymentService.verifyVnPayPayment(vnpParams);
 
-            // Cập nhật trạng thái đơn hàng trong database
-            // Implement logic cập nhật đơn hàng sau
-
             // Phản hồi cho VNPay theo định dạng yêu cầu
             return res.status(200).json({
                 RspCode: '00',
