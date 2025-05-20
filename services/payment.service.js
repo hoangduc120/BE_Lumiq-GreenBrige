@@ -1,227 +1,247 @@
+const axios = require('axios');
 const crypto = require('crypto');
-const https = require('https');
+const moment = require('moment');
+const querystring = require('querystring');
 const momoConfig = require('../configs/momo.config');
-const { vnpay, ProductCode, VnpLocale } = require('../configs/vnpay.config');
+const vnpayConfig = require('../configs/vnpay.config');
 
 class PaymentService {
     async createMomoPayment(amount, orderId) {
         try {
-            // Nếu không có orderId được cung cấp, tạo một mã mới
-            if (!orderId) {
-                orderId = momoConfig.generateOrderId();
+            // Sử dụng cấu hình MoMo từ file config
+            const partnerCode = momoConfig.partnerCode;
+            const accessKey = momoConfig.accessKey;
+            const secretKey = momoConfig.secretKey;
+            const returnUrl = momoConfig.redirectUrl;
+            const notifyUrl = momoConfig.ipnUrl;
+            const endpoint = process.env.MOMO_API_ENDPOINT || 'https://test-payment.momo.vn/v2/gateway/api/create';
+
+            console.log('MoMo config:', { partnerCode, accessKey, returnUrl, notifyUrl });
+
+            if (!secretKey) {
+                console.error('MoMo Secret Key is undefined');
+                throw new Error('Thiếu MoMo Secret Key trong cấu hình');
             }
 
-            const requestId = momoConfig.generateRequestId();
+            // Tạo requestId duy nhất
+            const requestId = `${moment().format('YYYYMMDD')}_${orderId || momoConfig.generateOrderId()}_${Date.now()}`;
+            const orderInfo = `Thanh toán đơn hàng: ${orderId || momoConfig.generateOrderId()}`;
 
-            // Tạo raw signature
-            const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${momoConfig.extraData}&ipnUrl=${momoConfig.ipnUrl}&orderId=${orderId}&orderInfo=${momoConfig.orderInfo}&partnerCode=${momoConfig.partnerCode}&redirectUrl=${momoConfig.redirectUrl}&requestId=${requestId}&requestType=${momoConfig.requestType}`;
+            // Chuẩn bị dữ liệu gửi đến MoMo
+            const rawData = {
+                partnerCode: partnerCode,
+                accessKey: accessKey,
+                requestId: requestId,
+                amount: amount,
+                orderId: orderId || momoConfig.generateOrderId(),
+                orderInfo: orderInfo,
+                redirectUrl: returnUrl,
+                ipnUrl: notifyUrl,
+                requestType: momoConfig.requestType,
+                extraData: momoConfig.extraData,
+                lang: momoConfig.lang
+            };
+
+            console.log('MoMo request data:', rawData);
 
             // Tạo chữ ký
-            const signature = crypto.createHmac('sha256', momoConfig.secretKey)
-                .update(rawSignature)
+            const message = `accessKey=${accessKey}&amount=${amount}&extraData=${rawData.extraData}&ipnUrl=${notifyUrl}&orderId=${rawData.orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${returnUrl}&requestId=${requestId}&requestType=${momoConfig.requestType}`;
+            const signature = crypto.createHmac('sha256', secretKey)
+                .update(message)
                 .digest('hex');
 
-            // Tạo request body
-            const requestBody = JSON.stringify({
-                partnerCode: momoConfig.partnerCode,
-                accessKey: momoConfig.accessKey,
-                requestId: requestId,
-                amount: amount.toString(),
-                orderId: orderId,
-                orderInfo: momoConfig.orderInfo,
-                redirectUrl: momoConfig.redirectUrl,
-                ipnUrl: momoConfig.ipnUrl,
-                extraData: momoConfig.extraData,
-                requestType: momoConfig.requestType,
-                signature: signature,
-                lang: momoConfig.lang
-            });
+            rawData.signature = signature;
+            console.log('MoMo signature generated:', signature);
 
-            // Gửi request đến MoMo API
-            return new Promise((resolve, reject) => {
-                const options = {
-                    hostname: 'test-payment.momo.vn',
-                    port: 443,
-                    path: '/v2/gateway/api/create',
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength(requestBody)
-                    }
-                };
-
-                const req = https.request(options, res => {
-                    let data = '';
-
-                    res.on('data', (chunk) => {
-                        data += chunk;
-                    });
-
-                    res.on('end', () => {
-                        try {
-                            const response = JSON.parse(data);
-                            resolve(response);
-                        } catch (error) {
-                            reject(error);
-                        }
-                    });
-                });
-
-                req.on('error', (error) => {
-                    reject(error);
-                });
-
-                req.write(requestBody);
-                req.end();
-            });
+            // Gửi request đến MoMo
+            console.log('Sending request to MoMo endpoint:', endpoint);
+            const response = await axios.post(endpoint, rawData);
+            console.log('MoMo response:', response.data);
+            return response.data;
         } catch (error) {
-            throw new Error(`Lỗi khi tạo thanh toán MoMo: ${error.message}`);
+            console.error('Error creating MoMo payment:', error);
+            if (error.response) {
+                console.error('MoMo API response error:', {
+                    status: error.response.status,
+                    data: error.response.data
+                });
+            }
+            throw new Error('Không thể tạo thanh toán MoMo: ' + (error.response?.data?.message || error.message));
         }
     }
 
-    async verifyMomoPayment(requestData) {
+    async verifyMomoPayment(data) {
         try {
-            // Trích xuất các thông tin từ dữ liệu request
-            const { orderId, requestId, amount, resultCode, transId, signature } = requestData;
+            // Kiểm tra chữ ký
+            const secretKey = process.env.MOMO_SECRET_KEY;
+            const accessKey = process.env.MOMO_ACCESS_KEY;
+            const partnerCode = process.env.MOMO_PARTNER_CODE;
 
-            // Tạo raw signature để xác thực
-            const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${requestData.extraData || ''}&orderId=${orderId}&orderInfo=${requestData.orderInfo || momoConfig.orderInfo}&partnerCode=${momoConfig.partnerCode}&requestId=${requestId}&resultCode=${resultCode}`;
+            // Kiểm tra xem giao dịch có thành công không
+            if (data.resultCode !== 0) {
+                return false;
+            }
 
-            // Tạo chữ ký để so sánh
-            const checkSignature = crypto.createHmac('sha256', momoConfig.secretKey)
-                .update(rawSignature)
+            // Tạo chữ ký để xác thực
+            const message = `accessKey=${accessKey}&amount=${data.amount}&extraData=${data.extraData}&orderId=${data.orderId}&orderInfo=${data.orderInfo}&orderType=${data.orderType}&partnerCode=${partnerCode}&payType=${data.payType}&requestId=${data.requestId}`;
+
+            const signature = crypto.createHmac('sha256', secretKey)
+                .update(message)
                 .digest('hex');
 
-            // Kiểm tra chữ ký và mã kết quả
-            if (checkSignature !== signature) {
-                throw new Error('Chữ ký không hợp lệ');
-            }
-
-            if (resultCode !== 0) {
-                throw new Error(`Thanh toán không thành công. Mã lỗi: ${resultCode}`);
-            }
-
-            // Lưu thông tin giao dịch vào database
-            // Implement logic lưu DB sau
-
-            return true;
+            // So sánh chữ ký
+            return signature === data.signature;
         } catch (error) {
-            throw new Error(`Lỗi khi xác thực thanh toán MoMo: ${error.message}`);
+            console.error('Error verifying MoMo payment:', error);
+            return false;
         }
     }
 
     async verifyMomoPaymentStatus(orderId, requestId) {
         try {
-            // Tạo raw signature
-            const rawSignature = `accessKey=${momoConfig.accessKey}&orderId=${orderId}&partnerCode=${momoConfig.partnerCode}&requestId=${requestId}`;
+            // Cấu hình MoMo từ environment variables
+            const partnerCode = process.env.MOMO_PARTNER_CODE;
+            const accessKey = process.env.MOMO_ACCESS_KEY;
+            const secretKey = process.env.MOMO_SECRET_KEY;
+            const endpoint = process.env.MOMO_QUERY_API || 'https://test-payment.momo.vn/v2/gateway/api/query';
+
+            // Chuẩn bị dữ liệu gửi đến MoMo
+            const rawData = {
+                partnerCode: partnerCode,
+                accessKey: accessKey,
+                requestId: `QUERY_${Date.now()}`,
+                orderId: orderId,
+                lang: 'vi'
+            };
 
             // Tạo chữ ký
-            const signature = crypto.createHmac('sha256', momoConfig.secretKey)
-                .update(rawSignature)
+            const message = `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${rawData.requestId}`;
+            const signature = crypto.createHmac('sha256', secretKey)
+                .update(message)
                 .digest('hex');
 
-            // Tạo request body
-            const requestBody = JSON.stringify({
-                partnerCode: momoConfig.partnerCode,
-                accessKey: momoConfig.accessKey,
-                requestId: requestId,
-                orderId: orderId,
-                signature: signature,
-                lang: momoConfig.lang
-            });
+            rawData.signature = signature;
 
-            // Gửi request đến MoMo API để kiểm tra trạng thái
-            return new Promise((resolve, reject) => {
-                const options = {
-                    hostname: 'test-payment.momo.vn',
-                    port: 443,
-                    path: '/v2/gateway/api/query',
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength(requestBody)
-                    }
-                };
-
-                const req = https.request(options, res => {
-                    let data = '';
-
-                    res.on('data', (chunk) => {
-                        data += chunk;
-                    });
-
-                    res.on('end', () => {
-                        try {
-                            const response = JSON.parse(data);
-                            resolve(response);
-                        } catch (error) {
-                            reject(error);
-                        }
-                    });
-                });
-
-                req.on('error', (error) => {
-                    reject(error);
-                });
-
-                req.write(requestBody);
-                req.end();
-            });
+            // Gửi request đến MoMo
+            const response = await axios.post(endpoint, rawData);
+            return response.data;
         } catch (error) {
-            throw new Error(`Lỗi khi kiểm tra trạng thái thanh toán MoMo: ${error.message}`);
+            console.error('Error checking MoMo payment status:', error);
+            throw new Error('Không thể kiểm tra trạng thái thanh toán MoMo: ' + error.message);
         }
     }
 
-    // Phương thức tạo thanh toán VNPay
     async createVnPayPayment(orderData, ipAddr, returnUrl) {
         try {
-            // Tạo mã đơn hàng nếu chưa có
-            if (!orderData.id) {
-                orderData.id = `ORDER_${Date.now()}`;
+            // Sử dụng cấu hình VNPay từ file config
+            const vnpTmnCode = vnpayConfig.tmnCode;
+            const vnpHashSecret = vnpayConfig.hashSecret;
+            const vnpUrl = vnpayConfig.vnpayHost;
+
+            console.log('VNPay payment config:', { vnpTmnCode, vnpHashSecretAvailable: !!vnpHashSecret, vnpUrl });
+
+            if (!vnpHashSecret) {
+                console.error('VNPay Hash Secret is undefined');
+                throw new Error('Thiếu VNPay Hash Secret trong cấu hình');
             }
 
-            // Tạo URL thanh toán VNPay
-            const paymentUrl = vnpay.buildPaymentUrl({
-                vnp_Amount: orderData.amount * 100, // VNPay yêu cầu số tiền phải * 100 (VND -> xu)
-                vnp_IpAddr: ipAddr,
-                vnp_TxnRef: orderData.id,
-                vnp_OrderInfo: `Thanh toan don hang ${orderData.id}`,
-                vnp_OrderType: ProductCode.Other,
+            // Tạo ngày thanh toán theo định dạng yyyyMMddHHmmss
+            const createDate = moment().format('YYYYMMDDHHmmss');
+
+            // Tạo mã giao dịch nếu không được cung cấp
+            const txnRef = orderData.id || `ORDER_${Date.now()}`;
+
+            // Tham số thanh toán
+            const vnpParams = {
+                vnp_Version: '2.1.0',
+                vnp_Command: 'pay',
+                vnp_TmnCode: vnpTmnCode,
+                vnp_Locale: vnpayConfig.VnpLocale.VN,
+                vnp_CurrCode: 'VND',
+                vnp_TxnRef: txnRef,
+                vnp_OrderInfo: `Thanh toan don hang: ${txnRef}`,
+                vnp_OrderType: vnpayConfig.ProductCode.Billpayment,
+                vnp_Amount: orderData.amount * 100, // VNPay yêu cầu số tiền * 100
                 vnp_ReturnUrl: returnUrl,
-                vnp_Locale: VnpLocale.VN
-            });
+                vnp_IpAddr: ipAddr,
+                vnp_CreateDate: createDate
+            };
+
+            console.log('VNPay request params:', vnpParams);
+
+            // Sắp xếp các tham số theo thứ tự a-z
+            const sortedParams = this.sortObject(vnpParams);
+
+            // Tạo query string
+            const signData = querystring.stringify(sortedParams, { encode: false });
+
+            // Tạo chữ ký HMAC-SHA512
+            const hmac = crypto.createHmac('sha512', vnpHashSecret);
+            const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+            console.log('VNPay signature generated:', signed);
+
+            // Thêm chữ ký vào tham số
+            sortedParams.vnp_SecureHash = signed;
+
+            // Tạo URL thanh toán
+            const vnpUrlWithParams = `${vnpUrl}?${querystring.stringify(sortedParams, { encode: false })}`;
+
+            console.log('VNPay redirect URL created');
 
             return {
-                paymentUrl,
-                orderId: orderData.id
+                redirectUrl: vnpUrlWithParams
             };
         } catch (error) {
-            throw new Error(`Lỗi khi tạo thanh toán VNPay: ${error.message}`);
+            console.error('Error creating VNPay payment:', error);
+            throw new Error('Không thể tạo thanh toán VNPay: ' + error.message);
         }
     }
 
-    // Phương thức xác thực thanh toán VNPay
     async verifyVnPayPayment(vnpParams) {
         try {
-            // Kiểm tra tính hợp lệ của dữ liệu
-            const isValid = vnpay.verifyReturnUrl(vnpParams);
+            // Sử dụng cấu hình từ file config
+            const vnpHashSecret = vnpayConfig.hashSecret;
 
-            if (!isValid) {
-                throw new Error('Dữ liệu không hợp lệ hoặc đã bị chỉnh sửa');
+            if (!vnpHashSecret) {
+                console.error('VNPay Hash Secret is undefined during verification');
+                throw new Error('Thiếu VNPay Hash Secret trong cấu hình');
             }
 
-            // Kiểm tra mã trạng thái
-            if (vnpParams.vnp_ResponseCode !== '00') {
-                throw new Error(`Thanh toán không thành công. Mã lỗi: ${vnpParams.vnp_ResponseCode}`);
+            const secureHash = vnpParams.vnp_SecureHash;
+
+            // Xóa chữ ký khỏi params để tạo chữ ký mới
+            delete vnpParams.vnp_SecureHash;
+            delete vnpParams.vnp_SecureHashType;
+
+            // Sắp xếp các tham số theo thứ tự a-z
+            const sortedParams = this.sortObject(vnpParams);
+
+            // Tạo query string
+            const signData = querystring.stringify(sortedParams, { encode: false });
+
+            // Tạo chữ ký HMAC-SHA512
+            const hmac = crypto.createHmac('sha512', vnpHashSecret);
+            const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+            console.log('VNPay verification - Generated signature:', signed);
+            console.log('VNPay verification - Received signature:', secureHash);
+
+            // So sánh chữ ký
+            if (secureHash !== signed) {
+                throw new Error('Chữ ký không hợp lệ');
             }
 
-            // Lưu thông tin giao dịch vào database
-            // Implement logic lưu DB sau
+            // Kiểm tra kết quả giao dịch
+            const responseCode = vnpParams.vnp_ResponseCode;
+            if (responseCode !== '00') {
+                throw new Error(`Giao dịch không thành công. Mã lỗi: ${responseCode}`);
+            }
 
             return {
                 success: true,
                 orderId: vnpParams.vnp_TxnRef,
-                amount: parseInt(vnpParams.vnp_Amount) / 100, // Chuyển từ xu sang VND
+                amount: parseInt(vnpParams.vnp_Amount) / 100, // Chuyển về đơn vị gốc
                 bankCode: vnpParams.vnp_BankCode,
                 bankTranNo: vnpParams.vnp_BankTranNo,
                 cardType: vnpParams.vnp_CardType,
@@ -229,8 +249,22 @@ class PaymentService {
                 transactionNo: vnpParams.vnp_TransactionNo
             };
         } catch (error) {
-            throw new Error(`Lỗi khi xác thực thanh toán VNPay: ${error.message}`);
+            console.error('Error verifying VNPay payment:', error);
+            throw new Error('Xác thực thanh toán VNPay thất bại: ' + error.message);
         }
+    }
+
+    sortObject(obj) {
+        const sorted = {};
+        const keys = Object.keys(obj).sort();
+
+        for (const key of keys) {
+            if (obj.hasOwnProperty(key)) {
+                sorted[key] = obj[key];
+            }
+        }
+
+        return sorted;
     }
 }
 
