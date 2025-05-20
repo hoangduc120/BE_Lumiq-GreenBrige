@@ -1,4 +1,4 @@
-const orderService = require('../services/order.sevice.js');
+const orderService = require('../services/order.sevice');
 
 class OrderController {
     // Tạo đơn hàng
@@ -7,10 +7,15 @@ class OrderController {
             const { shippingAddress, paymentMethod, items, totalAmount, transactionId } = req.body;
             const userId = req.user.id; // Giả sử middleware xác thực đã thêm user vào req
 
-            // Lưu transactionId vào paymentIntent nếu có
-            const paymentIntent = transactionId ? { transactionId } : null;
+            // Kiểm tra dữ liệu đầu vào cơ bản
+            if (!shippingAddress || !paymentMethod || !items || !totalAmount) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Thiếu thông tin cần thiết'
+                });
+            }
 
-            // Xử lý tạo đơn hàng từ giỏ hàng hoặc từ danh sách sản phẩm trực tiếp
+            // Tạo đơn hàng
             const order = await orderService.createOrder(
                 userId,
                 shippingAddress,
@@ -19,19 +24,19 @@ class OrderController {
                 totalAmount
             );
 
-            // Cập nhật paymentIntent nếu có
-            if (paymentIntent) {
-                order.paymentIntent = paymentIntent;
+            // Cập nhật paymentIntent nếu có transactionId
+            if (transactionId) {
+                order.paymentIntent = { transactionId };
                 await order.save();
             }
 
-            res.status(201).json({
+            return res.status(201).json({
                 success: true,
                 message: 'Đơn hàng đã được tạo',
                 order
             });
         } catch (error) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: error.message
             });
@@ -43,12 +48,12 @@ class OrderController {
         try {
             const userId = req.user.id;
             const orders = await orderService.getUserOrders(userId);
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 orders
             });
         } catch (error) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: error.message
             });
@@ -61,12 +66,12 @@ class OrderController {
             const userId = req.user.id;
             const { orderId } = req.params;
             const order = await orderService.getOrderById(userId, orderId);
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 order
             });
         } catch (error) {
-            res.status(404).json({
+            return res.status(404).json({
                 success: false,
                 message: error.message
             });
@@ -78,14 +83,18 @@ class OrderController {
         try {
             const { orderId } = req.params;
             const { status, paymentStatus } = req.body;
+
+            // Kiểm tra quyền admin (nếu cần)
+            // if (!req.user.isAdmin) throw new Error('Không có quyền cập nhật');
+
             const order = await orderService.updateOrderStatus(orderId, status, paymentStatus);
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 message: 'Đã cập nhật trạng thái đơn hàng',
                 order
             });
         } catch (error) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: error.message
             });

@@ -4,6 +4,7 @@ const moment = require('moment');
 const querystring = require('querystring');
 const momoConfig = require('../configs/momo.config');
 const vnpayConfig = require('../configs/vnpay.config');
+const { vnpay, ProductCode, VnpLocale } = vnpayConfig;
 
 class PaymentService {
     async createMomoPayment(amount, orderId) {
@@ -14,9 +15,9 @@ class PaymentService {
             const secretKey = momoConfig.secretKey;
             const returnUrl = momoConfig.redirectUrl;
             const notifyUrl = momoConfig.ipnUrl;
-            const endpoint = process.env.MOMO_API_ENDPOINT || 'https://test-payment.momo.vn/v2/gateway/api/create';
+            const endpoint = process.env.MOMO_API_ENDPOINT;
 
-            console.log('MoMo config:', { partnerCode, accessKey, returnUrl, notifyUrl });
+            console.log('MoMo config:', { partnerCode, accessKey, returnUrl, notifyUrl, endpoint });
 
             if (!secretKey) {
                 console.error('MoMo Secret Key is undefined');
@@ -103,7 +104,7 @@ class PaymentService {
             const partnerCode = process.env.MOMO_PARTNER_CODE;
             const accessKey = process.env.MOMO_ACCESS_KEY;
             const secretKey = process.env.MOMO_SECRET_KEY;
-            const endpoint = process.env.MOMO_QUERY_API || 'https://test-payment.momo.vn/v2/gateway/api/query';
+            const endpoint = process.env.MOMO_QUERY_API;
 
             // Chuẩn bị dữ liệu gửi đến MoMo
             const rawData = {
@@ -133,115 +134,64 @@ class PaymentService {
 
     async createVnPayPayment(orderData, ipAddr, returnUrl) {
         try {
-            // Sử dụng cấu hình VNPay từ file config
-            const vnpTmnCode = vnpayConfig.tmnCode;
-            const vnpHashSecret = vnpayConfig.hashSecret;
-            const vnpUrl = vnpayConfig.vnpayHost;
-
-            console.log('VNPay payment config:', { vnpTmnCode, vnpHashSecretAvailable: !!vnpHashSecret, vnpUrl });
-
-            if (!vnpHashSecret) {
-                console.error('VNPay Hash Secret is undefined');
-                throw new Error('Thiếu VNPay Hash Secret trong cấu hình');
+            // Tạo mã đơn hàng nếu chưa có
+            if (!orderData.id) {
+                orderData.id = `ORDER_${Date.now()}`;
             }
 
-            // Tạo ngày thanh toán theo định dạng yyyyMMddHHmmss
-            const createDate = moment().format('YYYYMMDDHHmmss');
+            console.log('VNPay payment params:', {
+                amount: orderData.amount,
+                orderId: orderData.id,
+                ipAddr,
+                returnUrl
+            });
 
-            // Tạo mã giao dịch nếu không được cung cấp
-            const txnRef = orderData.id || `ORDER_${Date.now()}`;
-
-            // Tham số thanh toán
-            const vnpParams = {
-                vnp_Version: '2.1.0',
-                vnp_Command: 'pay',
-                vnp_TmnCode: vnpTmnCode,
-                vnp_Locale: vnpayConfig.VnpLocale.VN,
-                vnp_CurrCode: 'VND',
-                vnp_TxnRef: txnRef,
-                vnp_OrderInfo: `Thanh toan don hang: ${txnRef}`,
-                vnp_OrderType: vnpayConfig.ProductCode.Billpayment,
-                vnp_Amount: orderData.amount * 100, // VNPay yêu cầu số tiền * 100
-                vnp_ReturnUrl: returnUrl,
+            // Tạo URL thanh toán VNPay
+            const paymentUrl = vnpay.buildPaymentUrl({
+                vnp_Amount: orderData.amount * 100, // VNPay yêu cầu số tiền phải * 100 (VND -> xu)
                 vnp_IpAddr: ipAddr,
-                vnp_CreateDate: createDate
-            };
+                vnp_TxnRef: orderData.id,
+                vnp_OrderInfo: `Thanh toan don hang ${orderData.id}`,
+                vnp_OrderType: ProductCode.Other,
+                vnp_ReturnUrl: returnUrl,
+                vnp_Locale: VnpLocale.VN
+            });
 
-            console.log('VNPay request params:', vnpParams);
-
-            // Sắp xếp các tham số theo thứ tự a-z
-            const sortedParams = this.sortObject(vnpParams);
-
-            // Tạo query string
-            const signData = querystring.stringify(sortedParams, { encode: false });
-
-            // Tạo chữ ký HMAC-SHA512
-            const hmac = crypto.createHmac('sha512', vnpHashSecret);
-            const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-
-            console.log('VNPay signature generated:', signed);
-
-            // Thêm chữ ký vào tham số
-            sortedParams.vnp_SecureHash = signed;
-
-            // Tạo URL thanh toán
-            const vnpUrlWithParams = `${vnpUrl}?${querystring.stringify(sortedParams, { encode: false })}`;
-
-            console.log('VNPay redirect URL created');
+            console.log('VNPay payment URL created:', paymentUrl);
 
             return {
-                redirectUrl: vnpUrlWithParams
+                redirectUrl: paymentUrl,
+                orderId: orderData.id
             };
         } catch (error) {
             console.error('Error creating VNPay payment:', error);
-            throw new Error('Không thể tạo thanh toán VNPay: ' + error.message);
+            throw new Error(`Không thể tạo thanh toán VNPay: ${error.message}`);
         }
     }
 
     async verifyVnPayPayment(vnpParams) {
         try {
-            // Sử dụng cấu hình từ file config
-            const vnpHashSecret = vnpayConfig.hashSecret;
+            console.log('Verifying VNPay params:', vnpParams);
 
-            if (!vnpHashSecret) {
-                console.error('VNPay Hash Secret is undefined during verification');
-                throw new Error('Thiếu VNPay Hash Secret trong cấu hình');
+            // Kiểm tra tính hợp lệ của dữ liệu
+            const isValid = vnpay.verifyReturnUrl(vnpParams);
+
+            if (!isValid) {
+                throw new Error('Dữ liệu không hợp lệ hoặc đã bị chỉnh sửa');
             }
 
-            const secureHash = vnpParams.vnp_SecureHash;
-
-            // Xóa chữ ký khỏi params để tạo chữ ký mới
-            delete vnpParams.vnp_SecureHash;
-            delete vnpParams.vnp_SecureHashType;
-
-            // Sắp xếp các tham số theo thứ tự a-z
-            const sortedParams = this.sortObject(vnpParams);
-
-            // Tạo query string
-            const signData = querystring.stringify(sortedParams, { encode: false });
-
-            // Tạo chữ ký HMAC-SHA512
-            const hmac = crypto.createHmac('sha512', vnpHashSecret);
-            const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-
-            console.log('VNPay verification - Generated signature:', signed);
-            console.log('VNPay verification - Received signature:', secureHash);
-
-            // So sánh chữ ký
-            if (secureHash !== signed) {
-                throw new Error('Chữ ký không hợp lệ');
+            // Kiểm tra mã trạng thái
+            if (vnpParams.vnp_ResponseCode !== '00') {
+                throw new Error(`Thanh toán không thành công. Mã lỗi: ${vnpParams.vnp_ResponseCode}`);
             }
 
-            // Kiểm tra kết quả giao dịch
-            const responseCode = vnpParams.vnp_ResponseCode;
-            if (responseCode !== '00') {
-                throw new Error(`Giao dịch không thành công. Mã lỗi: ${responseCode}`);
-            }
+            // Lưu thông tin giao dịch vào database
+            // Implement logic lưu DB sau
 
             return {
                 success: true,
                 orderId: vnpParams.vnp_TxnRef,
-                amount: parseInt(vnpParams.vnp_Amount) / 100, // Chuyển về đơn vị gốc
+                amount: parseInt(vnpParams.vnp_Amount) / 100, // Chuyển từ xu sang VND
                 bankCode: vnpParams.vnp_BankCode,
                 bankTranNo: vnpParams.vnp_BankTranNo,
                 cardType: vnpParams.vnp_CardType,
@@ -250,7 +200,7 @@ class PaymentService {
             };
         } catch (error) {
             console.error('Error verifying VNPay payment:', error);
-            throw new Error('Xác thực thanh toán VNPay thất bại: ' + error.message);
+            throw new Error(`Lỗi khi xác thực thanh toán VNPay: ${error.message}`);
         }
     }
 
