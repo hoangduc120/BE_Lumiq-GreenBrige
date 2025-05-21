@@ -5,12 +5,6 @@ const tmnCode = process.env.VNPAY_TMN_CODE;
 const hashSecret = process.env.VNPAY_SECURE_SECRET;
 const vnpayHost = process.env.VNPAY_HOST
 
-// Kiểm tra và ghi log các cấu hình VNPay
-console.log('VNPay config:', {
-    tmnCode,
-    hashSecret: hashSecret ? 'Available' : 'Missing',
-    vnpayHost
-});
 
 const vnpay = new VNPay({
     tmnCode: tmnCode,
