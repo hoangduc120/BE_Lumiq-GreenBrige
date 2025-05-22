@@ -5,6 +5,7 @@ const userRoute = require("./user.route");
 const authRoute = require("./auth.route");
 const productRoute = require("./product.route");
 const paymentRoute = require("./payment.route");
+const uploadRoute = require("./upload.route");
 const orderRoute = require("./order.route");
 const cartRoute = require("./cart.route");
 
@@ -24,6 +25,14 @@ const routes = [
   {
     path: "/payment",
     route: paymentRoute,
+  },
+  {
+    path: "/upload",
+    route: uploadRoute,
+  },
+  {
+    path: "/blog",
+    route: require("./blog.route"),
   },
   {
     path: "/orders",

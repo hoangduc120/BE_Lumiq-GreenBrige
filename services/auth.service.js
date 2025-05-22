@@ -41,7 +41,6 @@ class AuthService {
   }
 
   async refreshToken(refreshToken) {
-    console.log('refreshToken', refreshToken);
     const user = await User.findOne({ refreshToken });
     if (!user) {
       throw new ErrorWithStatus({
@@ -51,8 +50,7 @@ class AuthService {
     }
 
     try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-      console.log(decoded);
+      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);;
       const newAccessToken = jwt.sign(
         { id: user._id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
