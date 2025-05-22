@@ -28,8 +28,18 @@ const authMiddleware = async (req, res, next) => {
   try {
     const accessTokenDecoded = await verifyToken(accessToken, process.env.JWT_SECRET);
     req.jwtDecoded = accessTokenDecoded;
+
+    // Thêm thông tin user vào req để các controller có thể sử dụng
+    req.user = {
+      id: accessTokenDecoded.userId || accessTokenDecoded.id,
+      role: accessTokenDecoded.role
+    };
+
     req.id = accessTokenDecoded.userId || accessTokenDecoded.id;
     req.role = accessTokenDecoded.role;
+
+    console.log('User authenticated:', req.user);
+
     next();
   } catch (error) {
     console.error('Token verification failed:', error);

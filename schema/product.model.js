@@ -9,6 +9,7 @@ var productSchema = new mongoose.Schema({
     price: {
         type: Number,
         required: true,
+        min: 0
     },
     author: {
         type: String,
@@ -22,7 +23,16 @@ var productSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-
+    reviews: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'Review',
+    },
+    stock: {
+        type: Number,
+        required: true,
+        min: 0,
+        default: 0,
+    },
 });
 
 //Export the model

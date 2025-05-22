@@ -3,9 +3,11 @@ const router = express.Router();
 
 const userRoute = require("./user.route");
 const authRoute = require("./auth.route");
-const productRoute = require("./produciRoute");
+const productRoute = require("./product.route");
 const paymentRoute = require("./payment.route");
 const uploadRoute = require("./upload.route");
+const orderRoute = require("./order.route");
+const cartRoute = require("./cart.route");
 
 const routes = [
   {
@@ -31,7 +33,15 @@ const routes = [
   {
     path: "/blog",
     route: require("./blog.route"),
-  }
+  },
+  {
+    path: "/orders",
+    route: orderRoute,
+  },
+  {
+    path: "/cart",
+    route: cartRoute,
+  },
 ];
 
 routes.forEach((route) => {

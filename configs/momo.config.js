@@ -1,15 +1,15 @@
-const accessKey = process.env.ACCESS_KEY;
-const secretKey = process.env.SECRET_KEY;
+const accessKey = process.env.MOMO_ACCESS_KEY;
+const secretKey = process.env.MOMO_SECRET_KEY;
+const partnerCode = process.env.MOMO_PARTNER_CODE || 'MOMO';
 const orderInfo = 'Pay with MoMo';
-const partnerCode = 'MOMO';
-const redirectUrl = process.env.URL_FRONTEND;
-const ipnUrl = process.env.URL_FRONTEND;
+const redirectUrl = process.env.MOMO_RETURN_URL ;
+const ipnUrl = process.env.MOMO_NOTIFY_URL;
 const requestType = "captureWallet";
 const extraData = '';
 const orderGroupId = '';
 const autoCapture = true;
 const orderExpireTime = 2;
-const lang = 'en';
+const lang = 'vi';
 
 function generateOrderId() {
     return partnerCode + new Date().getTime();
