@@ -4,6 +4,7 @@ const moment = require('moment');
 const querystring = require('querystring');
 const momoConfig = require('../configs/momo.config');
 const vnpayConfig = require('../configs/vnpay.config');
+const Order = require('./order.sevice');
 const { vnpay, ProductCode, VnpLocale } = vnpayConfig;
 
 class PaymentService {
@@ -17,7 +18,6 @@ class PaymentService {
             const notifyUrl = momoConfig.ipnUrl;
             const endpoint = process.env.MOMO_API_ENDPOINT;
 
-            console.log('MoMo config:', { partnerCode, accessKey, returnUrl, notifyUrl, endpoint });
 
             if (!secretKey) {
                 console.error('MoMo Secret Key is undefined');
@@ -43,7 +43,6 @@ class PaymentService {
                 lang: momoConfig.lang
             };
 
-            console.log('MoMo request data:', rawData);
 
             // Tạo chữ ký
             const message = `accessKey=${accessKey}&amount=${amount}&extraData=${rawData.extraData}&ipnUrl=${notifyUrl}&orderId=${rawData.orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${returnUrl}&requestId=${requestId}&requestType=${momoConfig.requestType}`;
@@ -52,12 +51,9 @@ class PaymentService {
                 .digest('hex');
 
             rawData.signature = signature;
-            console.log('MoMo signature generated:', signature);
 
             // Gửi request đến MoMo
-            console.log('Sending request to MoMo endpoint:', endpoint);
             const response = await axios.post(endpoint, rawData);
-            console.log('MoMo response:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error creating MoMo payment:', error);
@@ -139,13 +135,6 @@ class PaymentService {
                 orderData.id = `ORDER_${Date.now()}`;
             }
 
-            console.log('VNPay payment params:', {
-                amount: orderData.amount,
-                orderId: orderData.id,
-                ipAddr,
-                returnUrl
-            });
-
             // Tạo URL thanh toán VNPay
             const paymentUrl = vnpay.buildPaymentUrl({
                 vnp_Amount: orderData.amount * 100, // VNPay yêu cầu số tiền phải * 100 (VND -> xu)
@@ -156,8 +145,6 @@ class PaymentService {
                 vnp_ReturnUrl: returnUrl,
                 vnp_Locale: VnpLocale.VN
             });
-
-            console.log('VNPay payment URL created:', paymentUrl);
 
             return {
                 redirectUrl: paymentUrl,
@@ -171,7 +158,6 @@ class PaymentService {
 
     async verifyVnPayPayment(vnpParams) {
         try {
-            console.log('Verifying VNPay params:', vnpParams);
 
             // Kiểm tra tính hợp lệ của dữ liệu
             const isValid = vnpay.verifyReturnUrl(vnpParams);

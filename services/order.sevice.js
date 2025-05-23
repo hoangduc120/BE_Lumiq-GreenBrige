@@ -1,42 +1,22 @@
 const Order = require("../schema/order.model");
 
 class OrderSevice {
-    async createOrder(req, res) {
+    async createOrder(userId, shippingAddress, paymentMethod, items, totalAmount) {
         try {
-            const { shippingAddress, paymentMethod, transactionId } = req.body;
-            const userId = req.user.id;
-
-            // Lấy dữ liệu từ giỏ hàng
-            const { items, totalPrice } = await cartService.getCartForOrder(userId);
-
-            // Tạo đơn hàng
-            const order = await orderService.createOrder(
+            // Tạo đơn hàng với dữ liệu được truyền vào
+            const order = await Order.create({
                 userId,
                 shippingAddress,
                 paymentMethod,
                 items,
-                totalPrice
-            );
-
-            // Cập nhật paymentIntent nếu có
-            if (transactionId) {
-                order.paymentIntent = { transactionId };
-                await order.save();
-            }
-
-            // Xóa giỏ hàng sau khi tạo đơn hàng (tùy chọn)
-            await cartService.clearCart(userId);
-
-            return res.status(201).json({
-                success: true,
-                message: 'Đơn hàng đã được tạo từ giỏ hàng',
-                data: order // Chuẩn hóa key 'data'
+                totalAmount,
+                status: 'pending',
+                paymentStatus: 'pending'
             });
+
+            return order;
         } catch (error) {
-            return res.status(400).json({
-                success: false,
-                message: error.message
-            });
+            throw new Error(`Lỗi khi tạo đơn hàng: ${error.message}`);
         }
     }
     async getUserOrders(userId) {

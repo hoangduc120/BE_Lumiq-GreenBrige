@@ -102,9 +102,6 @@ class ProductService {
     }
 
       async fetchAddressData(province, district, ward_street) {
-        console.log(province);
-        console.log(district);
-        console.log(ward_street);
         try {
           const url = `https://services.giaohangtietkiem.vn/services/address/getAddressLevel4?province=${province}&district=${district}&ward_street=${ward_street}`;
           const response = await axios.get(url, {
@@ -112,7 +109,6 @@ class ProductService {
               token: '76duRlamPHwHVcouzoetZaFm9vGqQF4RR8mTXq',
             },
           });
-          console.log(url);
           return response.data;
         } catch (error) {
           throw new Error(error);

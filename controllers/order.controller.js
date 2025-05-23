@@ -15,21 +15,35 @@ class OrderController {
                 });
             }
 
+            // Chuẩn bị dữ liệu shippingAddress theo schema
+            const formattedShippingAddress = {
+                address: typeof shippingAddress === 'string' ? shippingAddress : shippingAddress.address
+            };
+
+            // Chuẩn bị items với price từ productId
+            const formattedItems = items.map(item => ({
+                productId: item.productId._id,
+                quantity: item.quantity,
+                price: item.productId.price
+            }));
+
             // Tạo đơn hàng
             const order = await orderService.createOrder(
                 userId,
-                shippingAddress,
+                formattedShippingAddress,
                 paymentMethod,
-                items,
+                formattedItems,
                 totalAmount
             );
 
             // Cập nhật paymentIntent nếu có transactionId
             if (transactionId) {
-                order.paymentIntent = { transactionId };
+                order.paymentIntent = {
+                    transactionId,
+                    amount: totalAmount
+                };
                 await order.save();
             }
-
             return res.status(201).json({
                 success: true,
                 message: 'Đơn hàng đã được tạo',

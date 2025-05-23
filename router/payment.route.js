@@ -20,4 +20,10 @@ router.get('/vnpay-return', paymentController.vnpayReturn);
 // Route nhận thông báo thanh toán tức thì từ VNPay (IPN)
 router.get('/vnpay-ipn', paymentController.vnpayIpn);
 
+// Route lấy thông tin payment
+router.get('/:paymentId', paymentController.getPayment);
+
+// Route lấy danh sách payment của user
+router.get('/user/:userId', paymentController.getUserPayments);
+
 module.exports = router; 
