@@ -12,6 +12,9 @@ router.post('/add', authMiddleware, cartController.addToCart);
 // Xóa sản phẩm khỏi giỏ hàng
 router.delete('/item', authMiddleware, cartController.deleteItemCart);
 
+// Xóa nhiều sản phẩm khỏi giỏ hàng
+router.delete('/items', authMiddleware, cartController.deleteMultipleItems);
+
 // Xóa toàn bộ giỏ hàng
 router.delete('/clear', authMiddleware, cartController.clearCart);
 

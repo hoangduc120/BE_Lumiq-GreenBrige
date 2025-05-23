@@ -26,6 +26,21 @@ class CartController {
             return BAD_REQUEST(res, error.message);
         }
     }
+    async deleteMultipleItems(req, res) {
+        try {
+            const userId = req.user.id;
+            const { productIds } = req.body;
+
+            if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+                return BAD_REQUEST(res, "productIds phải là array và không được trống");
+            }
+
+            const cart = await cartService.removeMultipleCartItems(userId, productIds);
+            return OK(res, `Đã xóa ${productIds.length} sản phẩm khỏi giỏ hàng`, { cart });
+        } catch (error) {
+            return BAD_REQUEST(res, error.message);
+        }
+    }
     async getByUserId(req, res) {
         try {
             const userId = req.user.id;
