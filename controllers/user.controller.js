@@ -56,7 +56,6 @@ class UserController {
     res.json({ data: { user: req.jwtDecoded } });
   });
 
-  // Get current user's profile
   getProfile = catchAsync(async (req, res) => {
     const userId = req.user.id;
     const user = await userService.getUserProfile(userId);
