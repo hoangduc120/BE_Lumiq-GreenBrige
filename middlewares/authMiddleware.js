@@ -29,7 +29,6 @@ const authMiddleware = async (req, res, next) => {
     const accessTokenDecoded = await verifyToken(accessToken, process.env.JWT_SECRET);
     req.jwtDecoded = accessTokenDecoded;
 
-    // Thêm thông tin user vào req để các controller có thể sử dụng
     req.user = {
       id: accessTokenDecoded.userId || accessTokenDecoded.id,
       role: accessTokenDecoded.role
@@ -37,8 +36,6 @@ const authMiddleware = async (req, res, next) => {
 
     req.id = accessTokenDecoded.userId || accessTokenDecoded.id;
     req.role = accessTokenDecoded.role;
-
-    console.log('User authenticated:', req.user);
 
     next();
   } catch (error) {
