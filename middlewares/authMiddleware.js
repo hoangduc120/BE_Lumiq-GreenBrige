@@ -38,8 +38,6 @@ const authMiddleware = async (req, res, next) => {
     req.id = accessTokenDecoded.userId || accessTokenDecoded.id;
     req.role = accessTokenDecoded.role;
 
-    console.log('User authenticated:', req.user);
-
     next();
   } catch (error) {
     console.error('Token verification failed:', error);

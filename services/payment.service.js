@@ -18,7 +18,6 @@ class PaymentService {
             const notifyUrl = momoConfig.ipnUrl;
             const endpoint = process.env.MOMO_API_ENDPOINT;
 
-            console.log('MoMo config:', { partnerCode, accessKey, returnUrl, notifyUrl, endpoint });
 
             if (!secretKey) {
                 console.error('MoMo Secret Key is undefined');
@@ -44,7 +43,6 @@ class PaymentService {
                 lang: momoConfig.lang
             };
 
-            console.log('MoMo request data:', rawData);
 
             // Tạo chữ ký
             const message = `accessKey=${accessKey}&amount=${amount}&extraData=${rawData.extraData}&ipnUrl=${notifyUrl}&orderId=${rawData.orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${returnUrl}&requestId=${requestId}&requestType=${momoConfig.requestType}`;
@@ -53,12 +51,9 @@ class PaymentService {
                 .digest('hex');
 
             rawData.signature = signature;
-            console.log('MoMo signature generated:', signature);
 
             // Gửi request đến MoMo
-            console.log('Sending request to MoMo endpoint:', endpoint);
             const response = await axios.post(endpoint, rawData);
-            console.log('MoMo response:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error creating MoMo payment:', error);
