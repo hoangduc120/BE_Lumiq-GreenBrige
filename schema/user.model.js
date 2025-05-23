@@ -23,7 +23,7 @@ const userSchema = new Schema({
   },
   yob: {
     type: Date,
-    default: null, 
+    default: null,
   },
 
   role: {
@@ -31,7 +31,30 @@ const userSchema = new Schema({
     enum: ["user", "admin"],
     default: "user",
   },
+
   refreshToken: {
+    type: String,
+    default: null,
+  },
+
+  fullName: {
+    type: String,
+    default: null,
+  },
+  nickName: {
+    type: String,
+    default: null,
+  },
+
+  phone: {
+    type: String,
+    default: null,
+  },
+  address: {
+    type: String,
+    default: null,
+  },
+  avatar: {
     type: String,
     default: null,
   },
