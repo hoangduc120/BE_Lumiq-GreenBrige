@@ -4,6 +4,7 @@ const moment = require('moment');
 const querystring = require('querystring');
 const momoConfig = require('../configs/momo.config');
 const vnpayConfig = require('../configs/vnpay.config');
+const Order = require('./order.sevice');
 const { vnpay, ProductCode, VnpLocale } = vnpayConfig;
 
 class PaymentService {
@@ -139,13 +140,6 @@ class PaymentService {
                 orderData.id = `ORDER_${Date.now()}`;
             }
 
-            console.log('VNPay payment params:', {
-                amount: orderData.amount,
-                orderId: orderData.id,
-                ipAddr,
-                returnUrl
-            });
-
             // Tạo URL thanh toán VNPay
             const paymentUrl = vnpay.buildPaymentUrl({
                 vnp_Amount: orderData.amount * 100, // VNPay yêu cầu số tiền phải * 100 (VND -> xu)
@@ -156,8 +150,6 @@ class PaymentService {
                 vnp_ReturnUrl: returnUrl,
                 vnp_Locale: VnpLocale.VN
             });
-
-            console.log('VNPay payment URL created:', paymentUrl);
 
             return {
                 redirectUrl: paymentUrl,
@@ -171,7 +163,6 @@ class PaymentService {
 
     async verifyVnPayPayment(vnpParams) {
         try {
-            console.log('Verifying VNPay params:', vnpParams);
 
             // Kiểm tra tính hợp lệ của dữ liệu
             const isValid = vnpay.verifyReturnUrl(vnpParams);

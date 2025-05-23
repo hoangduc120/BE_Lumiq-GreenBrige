@@ -1,41 +1,21 @@
 const Cart = require("../schema/cart.model");
 const Product = require("../schema/product.model");
-
-
 class CartService {
-    async createCart(userId) {
-        try {
-            let cart = await Cart.findOne({ userId });
-            if (cart) {
-                throw new Error("Cart already exists");
-            }
-            cart = await Cart.create({ userId, items: [], totalPrice: 0 });
-            await cart.save();
-            return cart;
-        } catch (error) {
-            throw new Error("Failed to create cart");
-        }
-    }
     async addToCart(userId, productId, quantity) {
         try {
-            if (!productId || quantity < 1) {
-                throw new Error('Dữ liệu sản phẩm hoặc số lượng không hợp lệ');
-            }
-            const cart = await Cart.findOne({ userId });
+            let cart = await Cart.findOne({ userId });
             if (!cart) {
-                cart = new Cart({ userId, items: [], totalPrice: 0 });
-            }
-            const product = await Product.findById(productId);
-            if (!product) {
-                throw new Error('Sản phẩm không tồn tại');
-            }
-            const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
-            if (itemIndex > -1) {
-                // Nếu sản phẩm đã có, cập nhật số lượng
-                cart.items[itemIndex].quantity += quantity;
-            } else {
-                // Nếu sản phẩm chưa có, thêm mới
+                cart = await Cart.create({ userId, items: [], totalPrice: 0 });
                 cart.items.push({ productId, quantity });
+                let newCart = await cart.save();
+                return newCart;
+            } else {
+                const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
+                if (itemIndex > -1) {
+                    cart.items[itemIndex].quantity += quantity;
+                } else {
+                    cart.items.push({ productId, quantity });
+                }
             }
             await this.updateTotalPrice(cart);
             await cart.save();
@@ -110,3 +90,4 @@ class CartService {
         }
     }
 }
+module.exports = new CartService();

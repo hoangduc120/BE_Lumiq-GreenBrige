@@ -2,21 +2,16 @@ const cartService = require("../services/cart.service");
 const { OK, BAD_REQUEST } = require("../configs/response.config");
 
 class CartController {
-    async createCart(req, res) {
-        try {
-            const userId = req.user.id
-            const cart = await cartService.createCart(userId);
-            return OK(res, "Cart created successfully", { cart });
-        } catch (error) {
-            return BAD_REQUEST(res, error.message);
-        }
-    }
     async addToCart(req, res) {
         try {
             const userId = req.user.id;
-            const { productId, quantity = 1 } = req.body;
+            const { productId, quantity } = req.body;
             const cart = await cartService.addToCart(userId, productId, quantity);
-            return OK(res, "Sản phẩm đã được thêm vào giỏ hàng", { data: cart }); // Chuẩn hóa key 'data'
+            return res.status(201).json({
+                success: true,
+                message: "Sản phẩm đã được thêm vào giỏ hàng",
+                data: cart
+            });
         } catch (error) {
             return BAD_REQUEST(res, error.message);
         }

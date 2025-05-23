@@ -1,4 +1,5 @@
 const Order = require("../schema/order.model");
+const cartService = require("./cart.service");
 
 class OrderSevice {
     async createOrder(req, res) {
@@ -10,7 +11,7 @@ class OrderSevice {
             const { items, totalPrice } = await cartService.getCartForOrder(userId);
 
             // Tạo đơn hàng
-            const order = await orderService.createOrder(
+            const order = await Order.create(
                 userId,
                 shippingAddress,
                 paymentMethod,
