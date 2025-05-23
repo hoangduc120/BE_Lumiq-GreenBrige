@@ -47,6 +47,12 @@ var orderSchema = new mongoose.Schema({
         default: PAYMENT_STATUS.PENDING,
         required: true,
     },
+    paymentExpiredAt: {
+        type: Date,
+        default: function () {
+            return new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 giờ
+        }
+    },
     shippingAddress: {
         address: {
             type: String,

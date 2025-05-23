@@ -20,7 +20,6 @@ class PaymentService {
 
 
             if (!secretKey) {
-                console.error('MoMo Secret Key is undefined');
                 throw new Error('Thiếu MoMo Secret Key trong cấu hình');
             }
 
@@ -56,7 +55,6 @@ class PaymentService {
             const response = await axios.post(endpoint, rawData);
             return response.data;
         } catch (error) {
-            console.error('Error creating MoMo payment:', error);
             if (error.response) {
                 console.error('MoMo API response error:', {
                     status: error.response.status,
@@ -89,7 +87,6 @@ class PaymentService {
             // So sánh chữ ký
             return signature === data.signature;
         } catch (error) {
-            console.error('Error verifying MoMo payment:', error);
             return false;
         }
     }
@@ -123,7 +120,6 @@ class PaymentService {
             const response = await axios.post(endpoint, rawData);
             return response.data;
         } catch (error) {
-            console.error('Error checking MoMo payment status:', error);
             throw new Error('Không thể kiểm tra trạng thái thanh toán MoMo: ' + error.message);
         }
     }
@@ -151,7 +147,6 @@ class PaymentService {
                 orderId: orderData.id
             };
         } catch (error) {
-            console.error('Error creating VNPay payment:', error);
             throw new Error(`Không thể tạo thanh toán VNPay: ${error.message}`);
         }
     }
@@ -185,7 +180,6 @@ class PaymentService {
                 transactionNo: vnpParams.vnp_TransactionNo
             };
         } catch (error) {
-            console.error('Error verifying VNPay payment:', error);
             throw new Error(`Lỗi khi xác thực thanh toán VNPay: ${error.message}`);
         }
     }

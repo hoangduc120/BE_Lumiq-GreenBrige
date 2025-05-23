@@ -92,20 +92,33 @@ class OrderController {
         }
     }
 
-    // Cập nhật trạng thái đơn hàng (dành cho admin hoặc tích hợp thanh toán)
     async updateOrderStatus(req, res) {
         try {
             const { orderId } = req.params;
             const { status, paymentStatus } = req.body;
-
-            // Kiểm tra quyền admin (nếu cần)
-            // if (!req.user.isAdmin) throw new Error('Không có quyền cập nhật');
 
             const order = await orderService.updateOrderStatus(orderId, status, paymentStatus);
             return res.status(200).json({
                 success: true,
                 message: 'Đã cập nhật trạng thái đơn hàng',
                 order
+            });
+        } catch (error) {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Thêm method đơn giản để xử lý expired orders
+    async processExpiredOrders(req, res) {
+        try {
+            const processedCount = await orderService.processExpiredOrders();
+            return res.status(200).json({
+                success: true,
+                message: `Đã xử lý ${processedCount} orders hết hạn`,
+                processedCount
             });
         } catch (error) {
             return res.status(400).json({

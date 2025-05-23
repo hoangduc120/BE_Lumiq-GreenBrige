@@ -1,3 +1,4 @@
+const Cart = require("../schema/cart.model");
 const Order = require("../schema/order.model");
 
 class OrderSevice {
@@ -75,6 +76,27 @@ class OrderSevice {
             };
         } catch (error) {
             throw new Error(`Lỗi khi lấy giỏ hàng cho đơn hàng: ${error.message}`);
+        }
+    }
+    async processExpiredOrders() {
+        try {
+            const expiredOrders = await Order.find({
+                paymentStatus: 'pending',
+                paymentExpiredAt: { $lt: new Date() }
+            });
+            const updatePromises = expiredOrders.map(order => {
+                order.paymentStatus = 'failed';
+                order.status = 'cancelled';
+                return order.save();
+            });
+            await Promise.all(updatePromises);
+            return {
+                success: true,
+                message: `Đã xử lý ${expiredOrders.length} đơn hàng hết hạn`,
+                processedCount: expiredOrders.length
+            };
+        } catch (error) {
+            throw new Error(`Lỗi khi xử lý đơn hàng hết hạn: ${error.message}`);
         }
     }
 }

@@ -19,7 +19,6 @@ const authMiddleware = async (req, res, next) => {
   }
 
   if (!process.env.JWT_SECRET) {
-    console.error('JWT_SECRET is not defined in environment variables');
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       message: 'Server configuration error',
     });
@@ -39,7 +38,6 @@ const authMiddleware = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Token verification failed:', error);
     return res.status(StatusCodes.UNAUTHORIZED).json({
       message: 'Invalid or expired token. Please refresh your token or log in again.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,

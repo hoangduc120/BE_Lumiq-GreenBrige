@@ -364,7 +364,6 @@ class PaymentController {
                 Message: 'Confirm Success'
             });
         } catch (error) {
-            console.error('💥 VNPay IPN Error:', error);
             return res.status(200).json({
                 RspCode: '99',
                 Message: 'Confirm Fail'
@@ -471,7 +470,6 @@ class PaymentController {
             });
 
         } catch (error) {
-            console.error('💥 Debug Payment Error:', error);
             return BAD_REQUEST(res, error.message);
         }
     }
@@ -496,7 +494,6 @@ class PaymentController {
                 }))
             });
         } catch (error) {
-            console.error('💥 List Pending Payments Error:', error);
             return BAD_REQUEST(res, error.message);
         }
     }

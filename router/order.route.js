@@ -15,4 +15,7 @@ router.get('/:orderId', authMiddleware, orderController.getOrderById);
 // Cập nhật trạng thái đơn hàng (chỉ admin hoặc sau thanh toán)
 router.patch('/:orderId/status', authMiddleware, orderController.updateOrderStatus);
 
+// Xử lý orders hết hạn (có thể gọi manual hoặc từ cron job)
+router.post('/process-expired', authMiddleware, orderController.processExpiredOrders);
+
 module.exports = router; 
