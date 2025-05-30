@@ -8,6 +8,9 @@ const paymentRoute = require("./payment.route");
 const uploadRoute = require("./upload.route");
 const orderRoute = require("./order.route");
 const cartRoute = require("./cart.route");
+const voucherRoute = require("./voucher.route");
+const subscriptionPlanRoute = require("./subscriptionPlan.route");
+const userSubscriptionRoute = require("./userSubscription.route");
 
 const routes = [
   {
@@ -41,6 +44,18 @@ const routes = [
   {
     path: "/cart",
     route: cartRoute,
+  },
+  {
+    path: "/voucher",
+    route: voucherRoute,
+  },
+  {
+    path: "/subscription-plan",
+    route: subscriptionPlanRoute,
+  },
+  {
+    path: "/user/subscription-plan",
+    route: userSubscriptionRoute,
   },
 ];
 
