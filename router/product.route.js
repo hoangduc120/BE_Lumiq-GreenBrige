@@ -6,6 +6,7 @@ const generateQRCode = require("../utils/generateQR");
 const multer = require("multer"); // Add multer for parsing multipart/form-data
 const upload = multer();
 const mongoose = require("mongoose");
+const cloudinary = require("../configs/cloudinary.config"); // Ensure you have cloudinary configured
 
 router.post("/create", ProductController.createProduct);
 
@@ -136,6 +137,7 @@ router.put('/:id', async (req, res) => {
     'categories',
     'photos',
     'image',
+    'discount'
   ];
 
   const updateData = {};
@@ -146,18 +148,15 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
-    // Validate the ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: 'Invalid product ID' });
     }
 
-    // Check if the product exists
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // Validate photos if provided
     if (updateData.photos) {
       if (!Array.isArray(updateData.photos)) {
         return res.status(400).json({ error: 'Photos must be an array' });
@@ -169,10 +168,9 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Update the product
     const updated = await Product.findByIdAndUpdate(id, updateData, {
-      new: true, // Return the updated document
-      runValidators: true, // Ensure schema validators are applied
+      new: true, 
+      runValidators: true, 
     });
 
     if (!updated) {
@@ -185,6 +183,41 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to update product', details: err.message });
   }
 });
+
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid product ID" });
+  }
+
+  try {
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // Optional: Delete photos from Cloudinary
+    const photos = product.photos || [];
+    for (const photo of photos) {
+      if (photo.public_id) {
+        try {
+          await cloudinary.uploader.destroy(photo.public_id);
+        } catch (err) {
+          console.warn("Failed to delete from Cloudinary:", err.message);
+        }
+      }
+    }
+
+    await Product.findByIdAndDelete(id);
+
+    res.json({ message: "Product deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting product:", err);
+    res.status(500).json({ error: "Failed to delete product" });
+  }
+});
+
 
 router.get("/:id", ProductController.getProductById);
 router.post("/address", ProductController.getAddressData);

@@ -18,7 +18,11 @@ const productSchema = new mongoose.Schema({
   ],
   description: String,
   lastInspected: Date,
-  qrCode: String, // image or data string
+  qrCode: String,
+  discount: {
+    type: Number,
+    default: 0,
+  },
   price: { type: Number, required: true },
   reviews: [
     {
