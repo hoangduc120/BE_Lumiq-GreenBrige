@@ -58,6 +58,7 @@ const userSchema = new Schema({
     type: String,
     default: null,
   },
+  freeUsageCount: { type: Number, default: 0 },
 });
 
 const User = mongoose.model("User", userSchema);

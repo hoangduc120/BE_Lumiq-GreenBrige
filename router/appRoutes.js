@@ -11,6 +11,7 @@ const cartRoute = require("./cart.route");
 const voucherRoute = require("./voucher.route");
 const subscriptionPlanRoute = require("./subscriptionPlan.route");
 const userSubscriptionRoute = require("./userSubscription.route");
+const botRoute = require("./bot.route");
 
 const routes = [
   {
@@ -60,6 +61,10 @@ const routes = [
   {
     path: "/user/subscription-plan",
     route: userSubscriptionRoute,
+  },
+  {
+    path: "/bot",
+    route: botRoute,
   },
 ];
 
