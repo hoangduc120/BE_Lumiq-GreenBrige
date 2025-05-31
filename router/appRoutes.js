@@ -26,6 +26,10 @@ const routes = [
     route: productRoute,
   },
   {
+    path: "/category",
+    route: require("./category.route"),
+  },
+  {
     path: "/payment",
     route: paymentRoute,
   },

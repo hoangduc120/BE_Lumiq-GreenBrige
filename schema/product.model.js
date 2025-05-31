@@ -3,7 +3,13 @@ const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  species: String,
+  categories: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+  }
+],
+
   gardener: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
