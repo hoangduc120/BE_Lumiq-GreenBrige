@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const Bank = require('../schema/bank.model');
 
 // Load from .env (make sure these exist)
 const CLIENT_ID = process.env.VIETQR_CLIENT_ID;
@@ -35,6 +36,17 @@ router.post('/verify', async (req, res) => {
       error: 'Failed to verify account',
       detail: err.response?.data || err.message,
     });
+  }
+});
+
+
+router.get('/list', async (req, res) => {
+  try {
+    const banks = await Bank.find().select('shortName bin name code').lean();
+    res.json(banks);
+  } catch (err) {
+    console.error('Error fetching banks:', err);
+    res.status(500).json({ error: 'Failed to fetch banks' });
   }
 });
 

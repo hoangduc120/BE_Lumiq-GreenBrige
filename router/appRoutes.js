@@ -66,6 +66,10 @@ const routes = [
     path: "/bot",
     route: botRoute,
   },
+  {
+    path: "/bank",
+    route: require("./bank.route"),
+  },
 ];
 
 routes.forEach((route) => {
