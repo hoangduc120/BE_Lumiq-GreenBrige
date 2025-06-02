@@ -8,7 +8,18 @@ const upload = multer();
 const mongoose = require("mongoose");
 const cloudinary = require("../configs/cloudinary.config"); // Ensure you have cloudinary configured
 
-router.post("/create", ProductController.createProduct);
+// Thêm route để lấy tất cả sản phẩm - đặt TRƯỚC route /:id
+router.get("/", async (req, res) => {
+  try {
+    const { page = 1, limit = 6, sort = '', search = '' } = req.query;
+    const productService = require("../services/product.sevice");
+    const result = await productService.getAllProducts(page, limit, sort, search);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Error fetching products:", err);
+    res.status(500).json({ error: "Failed to fetch products", details: err.message });
+  }
+});
 
 router.post("/", upload.none(), async (req, res) => {
   try {
@@ -141,6 +152,7 @@ router.put('/:id', async (req, res) => {
   ];
 
   const updateData = {};
+
   for (const key of allowedFields) {
     if (req.body[key] !== undefined) {
       updateData[key] = req.body[key];
@@ -169,8 +181,8 @@ router.put('/:id', async (req, res) => {
     }
 
     const updated = await Product.findByIdAndUpdate(id, updateData, {
-      new: true, 
-      runValidators: true, 
+      new: true,
+      runValidators: true,
     });
 
     if (!updated) {
@@ -219,7 +231,6 @@ router.delete("/:id", async (req, res) => {
 });
 
 
-router.get("/:id", ProductController.getProductById);
 router.post("/address", ProductController.getAddressData);
 
 module.exports = router;
