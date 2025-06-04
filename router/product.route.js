@@ -102,8 +102,8 @@ router.get("/:id", async (req, res) => {
     const productId = req.params.id;
     const product = await Product.findById(productId).populate(
       "gardener",
-      "name email"
-    );
+      "name email",
+    ).populate("categories", "name");
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
