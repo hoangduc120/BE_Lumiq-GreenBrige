@@ -5,55 +5,32 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 
 class ProductService {
-    async getAllProducts(page = 1, limit = 10, sort = '', search = '', minPrice = 0, maxPrice = Infinity) {
+    async getAllProducts(page = 1, limit = 6, sort = '', search = '') {
         try {
-            const pageNum = parseInt(page, 10);
-            const limitNum = parseInt(limit, 10);
-            if (pageNum < 1 || limitNum < 1) {
-                throw new ErrorWithStatus({
-                    status: StatusCodes.BAD_REQUEST,
-                    message: "Số trang hoặc giới hạn không hợp lệ",
-                });
-            }
-            const skip = (pageNum - 1) * limitNum;
-
-            // Xây dựng truy vấn
-            let query = {
-                price: { $gte: minPrice, $lte: maxPrice },
-            };
+            let query = {};
             if (search) {
-                query.name = { $regex: search, $options: 'i' }; // Sửa productName thành name
+                query.name = { $regex: search, $options: 'i' };
             }
-
-            // Xây dựng tùy chọn sắp xếp
-            const validSorts = ['priceAsc', 'priceDesc', 'nameAsc'];
             let sortOption = {};
-            if (validSorts.includes(sort)) {
-                if (sort === 'priceAsc') sortOption.price = 1;
-                else if (sort === 'priceDesc') sortOption.price = -1;
-                else if (sort === 'nameAsc') sortOption.name = 1;
-            }
+            if (sort === 'priceAsc') sortOption.price = 1;
+            else if (sort === 'priceDesc') sortOption.price = -1;
+            else if (sort === 'nameAsc') sortOption.name = 1;
 
-            // Thực hiện truy vấn
             const products = await Product.find(query)
-                .populate('gardener', 'name email')
-                .sort(sortOption)
-                .skip(skip)
-                .limit(limitNum);
+                .populate('gardener', 'name')
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .sort(sortOption);
 
             const totalProducts = await Product.countDocuments(query);
-
             return {
                 products,
+                totalPages: Math.ceil(totalProducts / limit),
+                currentPage: page,
                 totalProducts,
-                totalPages: Math.ceil(totalProducts / limitNum),
-                currentPage: pageNum,
             };
         } catch (error) {
-            throw new ErrorWithStatus({
-                status: StatusCodes.BAD_REQUEST,
-                message: error.message,
-            });
+            throw new Error(`Lỗi khi lấy sản phẩm: ${error.message}`);
         }
     }
 
@@ -89,7 +66,7 @@ class ProductService {
             const url = `https://services.giaohangtietkiem.vn/services/address/getAddressLevel4?province=${province}&district=${district}&ward_street=${ward_street}`;
             const response = await axios.get(url, {
                 headers: {
-                    token: process.env.GHTK_API_TOKEN, // Sử dụng biến môi trường
+                    token: process.env.GHTK_API_TOKEN,
                 },
             });
             return response.data;
