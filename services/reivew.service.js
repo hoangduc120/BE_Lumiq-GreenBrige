@@ -1,5 +1,5 @@
-const Product = require("../models/product.model");
-const User = require("../models/user.model");
+const Product = require("../schema/product.model");
+const User = require("../schema/user.model");
 const Review = require("../schema/review.model");
 
 class ReviewService {
@@ -30,7 +30,7 @@ class ReviewService {
             return await review.populate([
                 {
                     path: "author",
-                    select: "name email",
+                    select: "name email avatar",
                 },
                 {
                     path: "product",
@@ -52,7 +52,7 @@ class ReviewService {
                 .populate([
                     {
                         path: "author",
-                        select: "name email",
+                        select: "name email avatar",
                     },
                     {
                         path: "product",
@@ -89,7 +89,7 @@ class ReviewService {
                     },
                     {
                         path: "author",
-                        select: "name email",
+                        select: "name email avatar",
                     }
                 ])
                 .sort({ createdAt: -1 })

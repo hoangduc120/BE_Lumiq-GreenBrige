@@ -12,6 +12,7 @@ const voucherRoute = require("./voucher.route");
 const subscriptionPlanRoute = require("./subscriptionPlan.route");
 const userSubscriptionRoute = require("./userSubscription.route");
 const botRoute = require("./bot.route");
+const reviewRoute = require("./review.route");
 
 const routes = [
   {
@@ -70,6 +71,10 @@ const routes = [
     path: "/bank",
     route: require("./bank.route"),
   },
+  {
+    path: "/review",
+    route: reviewRoute,
+  }
 ];
 
 routes.forEach((route) => {
