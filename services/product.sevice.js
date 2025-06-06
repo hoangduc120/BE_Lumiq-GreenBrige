@@ -17,7 +17,7 @@ class ProductService {
             else if (sort === 'nameAsc') sortOption.name = 1;
 
             const products = await Product.find(query)
-                .populate('gardener', 'name')
+                .populate('gardener', 'email')
                 .skip((page - 1) * limit)
                 .limit(limit)
                 .sort(sortOption);

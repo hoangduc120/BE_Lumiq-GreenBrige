@@ -1,4 +1,4 @@
-const ReviewService = require("../services/review.service");
+const ReviewService = require("../services/reivew.service");
 
 class ReviewController {
     async createReview(req, res) {
