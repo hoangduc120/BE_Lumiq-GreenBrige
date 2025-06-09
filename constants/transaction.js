@@ -7,6 +7,7 @@ const transactionStatus = {
 const paymentMethods = {
     VNPAY: 'VNPay',
     MOMO: 'Momo',
+    VietQR: "vietqr"
 };
 
 module.exports = { transactionStatus, paymentMethods };
