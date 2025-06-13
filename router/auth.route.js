@@ -34,16 +34,17 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
   const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: 'Strict',
+    secure: true,         // Render luôn chạy HTTPS
+    sameSite: 'none',     // Bắt buộc để cross-site cookie
     maxAge: 20 * 1000,
   });
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: 'Strict',
+    secure: true,
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+  
 
   return res.redirect(`http://localhost:5173?accessToken=${accessToken}`);
 });
