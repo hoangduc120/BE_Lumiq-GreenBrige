@@ -30,61 +30,45 @@ router.get("/user/:userId", paymentController.getUserPayments);
 
 router.post("/webhook", async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { content, transferAmount } = req.body;
+
+    if (!content || !transferAmount) {
+      return res.status(400).json({ error: "Missing transaction details" });
+    }
+
+    const orderIdMatch = content.match(/(ORDER\d+)/);
+    const orderId = orderIdMatch ? orderIdMatch[1] : null;
+
     if (!orderId) {
-      return res.status(400).json({ error: "Missing orderId" });
+      return res.status(400).json({ error: "Không tìm thấy orderId trong nội dung chuyển tiền" });
     }
 
     const order = await Order.findOne({ orderId });
+
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    let found = false;
-    try {
-      const { data } = await axios.get(
-        "https://my.sepay.vn/userapi/transactions/list",
-        {
-          params: {
-            account_number: "0911146605",
-            limit: 20,
-          },
-          headers: {
-            Authorization: `Bearer ${process.env.SEPAY_API_KEY}`,
-          },
-        }
-      );
-
-      const transaction = data.transactions.find(
-        (tran) =>
-          tran.transaction_content &&
-          tran.transaction_content.includes(orderId) &&
-          Number(tran.amount_in) === Number(order.totalAmount)
-      );
-
-      if (!transaction) {
-        return res.status(400).json({
-          error: "Không tìm thấy giao dịch phù hợp trong Sepay",
-        });
-      }
-
-      order.status = "success";
-      order.paymentStatus = "paid";
-      await order.save();
-
-      return res.status(200).json({
-        success: true,
-        message: "Đơn hàng đã được xác nhận thanh toán!",
-        orderId,
-      });
-    } catch (err) {
-      console.error("❌ Error call Sepay:", err.message);
-      return res.status(500).json({ error: "Lỗi khi gọi Sepay API" });
+    if (Number(transferAmount) !== Number(order.totalAmount)) {
+      return res.status(400).json({ error: "Số tiền giao dịch không khớp với đơn hàng" });
     }
+
+    order.status = "success";
+    order.paymentStatus = "paid";
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Đơn hàng đã được xác nhận thanh toán!",
+      orderId,
+    });
+
   } catch (error) {
     console.error("❌ Webhook error:", error.message);
     res.status(500).json({ error: "Error processing webhook" });
   }
 });
+
+
 
 module.exports = router;
