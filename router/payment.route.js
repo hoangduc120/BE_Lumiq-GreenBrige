@@ -32,72 +32,49 @@ router.get("/user/:userId", paymentController.getUserPayments);
 
 router.post("/webhook", async (req, res) => {
   try {
+    console.log("🔔 Webhook received:", req.body);
     const { content, transferAmount } = req.body;
     const orderIdMatch = content.match(/(ORDER\d+)/);
     const orderId = orderIdMatch ? orderIdMatch[1] : null;
+    
+    console.log("📝 Extracted orderId:", orderId);
+    console.log("💰 Transfer amount:", transferAmount);
 
     if (!orderId || !transferAmount) {
+      console.log("❌ Missing data - orderId:", orderId, "transferAmount:", transferAmount);
       return res.status(400).json({ error: "Thiếu dữ liệu" });
     }
 
-    const order = await Order.findOne({ orderId }).populate('items.productId');
+    const order = await Order.findOne({ orderId });
+    console.log("🔍 Found order:", order ? `ID: ${order._id}, orderId: ${order.orderId}, totalAmount: ${order.totalAmount}` : "null");
+    
     if (!order) return res.status(404).json({ error: "Không tìm thấy đơn hàng" });
 
     if (Number(transferAmount) !== Number(order.totalAmount)) {
+      console.log("❌ Amount mismatch - transferAmount:", transferAmount, "order.totalAmount:", order.totalAmount);
       return res.status(400).json({ error: "Số tiền không khớp" });
     }
 
     order.status = "success";
     order.paymentStatus = "paid";
     await order.save();
+    console.log("✅ Order updated successfully");
 
-    const gardenerMap = {};
+    // Emit qua WebSocket
+    const io = req.app.get("io");
+    console.log("🔌 Emitting payment_success to room:", orderId);
+    
+    // Emit tới room cụ thể
+    io.to(orderId).emit("payment_success", { orderId });
+    
+    // Emit tới tất cả clients (fallback)
+    io.emit("payment_success_global", { orderId, userId: order.userId });
+    
+    console.log("✅ Socket events emitted for orderId:", orderId);
 
-    for (const item of order.items) {
-      const product = item.productId;
-      const gardenerId = product.gardener.toString();
-      const amount = item.price * item.quantity;
-
-      if (!gardenerMap[gardenerId]) {
-        gardenerMap[gardenerId] = {
-          total: 0,
-        };
-      }
-
-      gardenerMap[gardenerId].total += amount;
-    }
-
-    const commissionPercent = 10;
-
-    for (const [gardenerId, data] of Object.entries(gardenerMap)) {
-      const amountToPayout = Math.round(data.total * (1 - commissionPercent / 100));
-
-      const existing = await PayoutRequest.findOne({
-        orderId,
-        gardenerId,
-      });
-
-      if (!existing) {
-        await PayoutRequest.create({
-          orderId,
-          gardenerId,
-          userId: order.userId,
-          totalAmount: data.total,
-          amountToPayout,
-          commissionPercent,
-          status: 'pending',
-        });
-      }
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Đã cập nhật đơn và tạo các payout",
-      orderId,
-    });
-
+    return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("❌ Webhook error:", error.message);
+    console.error("Webhook error:", error.message);
     return res.status(500).json({ error: "Webhook xử lý thất bại" });
   }
 });
