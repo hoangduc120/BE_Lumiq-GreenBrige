@@ -12,11 +12,13 @@ const userSubscriptionSchema = new mongoose.Schema(
       ref: "SubscriptionPlan",
       required: true,
     },
-    voucherId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Voucher",
-      default: null,
-    },
+    voucherIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Voucher",
+        default: null,
+      },
+    ],
     aiFreeUsageLeft: { type: Number, default: 0 },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date, required: true },

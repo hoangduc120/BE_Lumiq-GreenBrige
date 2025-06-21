@@ -1,4 +1,5 @@
 const Voucher = require("../schema/voucher.model");
+const UserSubscription = require("../schema/userSubscription.model");
 const ErrorWithStatus = require("../utils/errorWithStatus");
 const { StatusCodes } = require("http-status-codes");
 
@@ -111,6 +112,12 @@ class VoucherService {
         message: error.message,
       });
     }
+  }
+
+  async getAllVouchersOfUser(userId) {
+    // Lấy tất cả voucherId từ các subscription của user
+    const subs = await UserSubscription.find({ userId }).populate("voucherIds");
+    return subs.flatMap((sub) => sub.voucherIds).filter((v) => v); // loại bỏ null
   }
 }
 
