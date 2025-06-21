@@ -3,35 +3,44 @@ dotenv.config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const connectDB = require("./db/connectDB");
 const passport = require("./configs/passport.config");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
-const app = express();
+const http = require("http");
 
+const connectDB = require("./db/connectDB");
+const initSocket = require("./socket");
+
+const app = express();
+const server = http.createServer(app); // tạo HTTP server
+
+// Khởi tạo socket.io
+const io = initSocket(server);
+app.set("io", io); // inject io vào req.app trong route
+
+// Middleware cơ bản
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); // Must be before CORS and routes
+app.use(cookieParser());
 
-// CORS configuration
+// CORS config
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: "http://localhost:5173", // Frontend local
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  optionsSuccessStatus: 204,
   allowedHeaders: ["Authorization", "Content-Type"],
   credentials: true,
 };
 app.use(cors(corsOptions));
 
-// Session and passport
+// Session và Passport
 app.use(
   session({
-    secret: "your_secret_key",
+    secret: process.env.SESSION_SECRET || "your_secret_key",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true,            
-      sameSite: "none",       
+      secure: process.env.NODE_ENV === "production", // true nếu production (https)
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
 );
@@ -42,37 +51,30 @@ app.use(passport.session());
 const appRoutes = require("./router/appRoutes");
 app.use("/", appRoutes);
 
-// Error handling
+// 404 handler
 app.use((req, res, next) => {
-  res.status(404).json({
-    message: "Route not found",
-  });
+  res.status(404).json({ message: "Route not found" });
 });
 
+// Error handler
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  if (err.status && err.message) {
-    return res.status(err.status).json({
-      message: err.message,
-      error: err.message,
-    });
-  }
-  res.status(500).json({
-    message: "Something went wrong!",
-    error: err.message,
+  console.error("Server error:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Something went wrong!",
+    error: err.stack,
   });
 });
 
+// Server khởi chạy
 const PORT = process.env.PORT || 5000;
-
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 };

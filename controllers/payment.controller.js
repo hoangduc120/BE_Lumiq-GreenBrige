@@ -4,6 +4,9 @@ const cartService = require("../services/cart.service"); // Thêm cart service
 const Order = require("../schema/order.model");
 const { PaymentMethod } = require("../schema/payment.model");
 const mongoose = require("mongoose");
+const PayoutRequest = require('../schema/payoutRequest');
+const sendEmail = require("../utils/sendMail");
+const User = require("../schema/user.model");
 
 async function removeOrderItemsFromCart(userId, orderId) {
   try {
@@ -70,7 +73,7 @@ class PaymentController {
           status: "pending",
           paymentStatus: "pending",
           shippingAddress: {
-            address: "Địa chỉ mặc định", // Có thể lấy từ request nếu có
+            address: "Địa chỉ mặc định", 
           },
         };
 
@@ -84,9 +87,8 @@ class PaymentController {
         });
       }
 
-      // Tạo record payment trong database
       const paymentData = {
-        orderId: order._id, // Sử dụng ObjectId thật của order
+        orderId: order._id, 
         userId: userId || order.userId,
         amount: amount,
         paymentMethod: PaymentMethod.MOMO,
@@ -95,10 +97,8 @@ class PaymentController {
 
       const payment = await paymentDbService.createPayment(paymentData);
 
-      // Tạo thanh toán MoMo với custom orderId
       const response = await paymentService.createMomoPayment(amount, orderId);
 
-      // Cập nhật payment với URL và transaction ID
       if (response.payUrl && response.orderId) {
         await paymentDbService.updatePaymentUrl(
           payment._id,
@@ -113,7 +113,7 @@ class PaymentController {
           payUrl: response.payUrl,
           orderId: response.orderId,
           paymentId: payment._id,
-          realOrderId: order._id, // Trả về ObjectId thật để frontend có thể dùng
+          realOrderId: order._id, 
         },
       });
     } catch (error) {
@@ -125,7 +125,6 @@ class PaymentController {
     }
   }
 
-  // Phương thức xử lý callback từ MoMo
   async momoCallback(req, res) {
     try {
       const {
@@ -174,7 +173,6 @@ class PaymentController {
     }
   }
 
-  // Phương thức verify thanh toán MoMo từ frontend
   async verifyMomoPayment(req, res) {
     try {
       const { orderId, requestId, resultCode } = req.body;
@@ -202,7 +200,6 @@ class PaymentController {
             status: "success",
           });
         } else {
-          // Thanh toán thất bại
           await paymentDbService.markPaymentFailed(
             payment._id,
             `Thanh toán thất bại. Mã lỗi: ${resultCode}`,
@@ -219,7 +216,6 @@ class PaymentController {
     }
   }
 
-  // Phương thức tạo thanh toán VNPay
   async createVnPayPayment(req, res) {
     try {
       const { amount, orderId, userId, items } = req.body;
@@ -233,9 +229,7 @@ class PaymentController {
 
       let order = await findOrder(orderId);
 
-      // Nếu không tìm thấy order và có items, tạo order mới
       if (!order && items && items.length > 0) {
-        // Tạo order mới từ items
         const orderData = {
           userId: userId,
           items: items.map((item) => ({
@@ -248,7 +242,7 @@ class PaymentController {
           status: "pending",
           paymentStatus: "pending",
           shippingAddress: {
-            address: "Địa chỉ mặc định", // Có thể lấy từ request nếu có
+            address: "Địa chỉ mặc định", 
           },
         };
 
@@ -557,6 +551,64 @@ class PaymentController {
       });
     } catch (error) {
       return BAD_REQUEST(res, error.message);
+    }
+  }
+
+  async getPayoutRequests(req, res) {
+    try {
+      const gardenerId = req.user.id;
+  
+      const payouts = await PayoutRequest.find({ gardenerId })
+        .sort({ createdAt: -1 });
+  
+      return res.status(200).json({
+        success: true,
+        payouts,
+      });
+    } catch (error) {
+      console.error("GET /gardener/payouts error:", error.message);
+      return res.status(500).json({ success: false, message: "Lỗi server" });
+    }
+  }
+
+  async updatePayoutRequest(req, res) {
+    try {
+      const payoutId = req.params.id;
+      const { status, note } = req.body;
+  
+      const allowedStatus = ["approved", "paid", "rejected"];
+      if (!allowedStatus.includes(status)) {
+        return res.status(400).json({ success: false, message: "Trạng thái không hợp lệ" });
+      }
+  
+      const payout = await PayoutRequest.findById(payoutId);
+      if (!payout) {
+        return res.status(404).json({ success: false, message: "Không tìm thấy payout" });
+      }
+  
+      payout.status = status;
+      if (status === "paid") payout.paidAt = new Date();
+      if (note) payout.note = note;
+  
+      await payout.save();
+  
+      if (status === "paid") {
+        const gardener = await User.findById(payout.gardenerId);
+        await sendEmail({
+          to: gardener.email,
+          subject: "Payout của bạn đã được thanh toán",
+          text: `Chúng tôi đã chuyển ${payout.amountToPayout} VND cho bạn qua hình thức thủ công.`,
+        });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        message: "Cập nhật payout thành công",
+        payout,
+      });
+    } catch (error) {
+      console.error("PATCH /admin/payouts/:id error:", error.message);
+      return res.status(500).json({ success: false, message: "Lỗi server" });
     }
   }
 }
