@@ -81,6 +81,19 @@ class VoucherController {
       return BAD_REQUEST(res, error.message);
     }
   });
+
+  getAvailableForUser = catchAsync(async (req, res) => {
+    try {
+      const userId = req.user.id;
+      if (!userId) {
+        return BAD_REQUEST(res, "Missing userId");
+      }
+      const vouchers = await voucherService.getAllVouchersOfUser(userId);
+      return OK(res, "Get all vouchers of user successfully", { vouchers });
+    } catch (error) {
+      return BAD_REQUEST(res, error.message);
+    }
+  });
 }
 
 module.exports = new VoucherController();

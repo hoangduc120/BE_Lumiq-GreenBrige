@@ -21,4 +21,11 @@ router.delete(
   voucherController.delete
 );
 
+// User can get available vouchers
+router.get(
+  "/available/user",
+  authMiddleware,
+  voucherController.getAvailableForUser
+);
+
 module.exports = router;
